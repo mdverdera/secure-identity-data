@@ -23,9 +23,22 @@ builder.Host.UseSerilog((context, loggerConfig) =>
 builder.Services.AddControllers();
 builder.Services.AddIdentityProviderServices(builder.Configuration);
 
-// ── OpenAPI / Swagger ─────────────────────────────────────────────────────────
+// ── Swagger UI ────────────────────────────────────────────────────────────────
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddOpenApi();
+builder.Services.AddSwaggerGen(options =>
+{
+    options.SwaggerDoc("v1", new()
+    {
+        Title = "Demo Identity Provider API",
+        Version = "v1",
+        Description = """
+            ⚠️ Educational Proof of Concept — Not for production use.
+            This is an independent POC demonstrating OAuth 2.1 Authorization Code + PKCE patterns.
+            It does NOT connect to any government identity service.
+            All users and identity data are fictional test data.
+            """,
+    });
+});
 
 // ── HTTPS / Security ──────────────────────────────────────────────────────────
 builder.Services.AddHsts(options =>
@@ -43,7 +56,13 @@ app.UseMiddleware<GlobalExceptionMiddleware>();
 
 if (app.Environment.IsDevelopment())
 {
-    app.MapOpenApi();
+    app.UseSwagger();
+    app.UseSwaggerUI(options =>
+    {
+        options.SwaggerEndpoint("/swagger/v1/swagger.json", "Demo Identity Provider v1");
+        options.RoutePrefix = "swagger";
+        options.DocumentTitle = "Demo Identity Provider — POC";
+    });
 }
 else
 {
