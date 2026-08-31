@@ -1,0 +1,9 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/IdentityProvider.Api/IdentityProvider.Api.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/IdentityProvider.IntegrationTests/IdentityProvider.IntegrationTests.csproj" />
+    <Project Path="tests/IdentityProvider.UnitTests/IdentityProvider.UnitTests.csproj" />
+  </Folder>
+</Solution>
