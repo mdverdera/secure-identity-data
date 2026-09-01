@@ -31,7 +31,7 @@ public sealed class GetOpenIdConfigurationQueryHandler
             ResponseTypesSupported: ["code"],
             SubjectTypesSupported: ["public"],
             IdTokenSigningAlgValuesSupported: ["RS256"],
-            ScopesSupported: ["openid", "profile"],
+            ScopesSupported: ["openid", "profile", "identity.read"],
             TokenEndpointAuthMethodsSupported: ["none"],  // public client
             CodeChallengeMethodsSupported: ["S256"]
         );

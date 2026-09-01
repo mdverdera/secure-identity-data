@@ -1,0 +1,29 @@
+# Build artifacts
+**/bin/
+**/obj/
+**/publish/
+
+# Test projects
+tests/
+
+# Local config and secrets
+**/appsettings.Development.json
+**/*.user
+**/*.userprefs
+**/.vs/
+
+# Version control
+.git/
+.gitignore
+
+# IDE
+**/.idea/
+**/.vscode/
+
+# Documentation
+docs/
+*.md
+
+# Solution-level files not needed in image
+*.slnx
+*.sln

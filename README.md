@@ -26,11 +26,16 @@ This portfolio POC demonstrates strong knowledge of enterprise-grade identity an
 | RSA asymmetric signing | 2048-bit key, public-only JWK exposure |
 | JWK / JWKS endpoint | `/.well-known/jwks.json` |
 | OpenID-style discovery | `/.well-known/openid-configuration` |
+| JWT Bearer validation | Signature, issuer, audience, expiry, RS256-only, ClockSkew=Zero |
+| Protected resource server | `GET /api/profile`, `GET /api/identity` — scope-guarded endpoints |
+| OAuth scopes enforcement | `identity.read` scope required; 403 on insufficient scope |
+| EF Core + PostgreSQL | Supabase-hosted relational store for identity data |
+| Audit logging | Structured per-request audit trail, no token values logged |
 | CQRS with MediatR | Commands + Queries + pipeline behaviors |
 | Clean Architecture | Domain → Application → Infrastructure → API |
 | Validation pipeline | FluentValidation via MediatR behavior |
 | Structured logging | Serilog — tokens never logged |
-| Security-first design | Single-use codes, exact redirect URI match |
+| Security-first design | Single-use codes, exact redirect URI match, non-root Docker user |
 
 ---
 
@@ -150,21 +155,32 @@ A `ValidationBehavior<TRequest, TResponse>` MediatR pipeline behavior runs all F
 ```
 secure-identity-data-poc/
 ├── src/
-│   └── IdentityProvider.Api/
-│       ├── Features/                    # CQRS — Commands and Queries
-│       │   ├── Authorization/
-│       │   ├── Token/
-│       │   └── Discovery/
-│       ├── Domain/                      # Entities, Exceptions (no dependencies)
-│       ├── Infrastructure/              # PKCE, JWT, RSA, In-memory stores
-│       ├── Common/                      # Behaviors, Middleware, Extensions
-│       ├── Controllers/                 # Thin HTTP adapters
+│   ├── IdentityProvider.Api/            # Phase 1 — OAuth 2.1 + PKCE Identity Provider
+│   │   ├── Features/                    # CQRS — Commands and Queries
+│   │   │   ├── Authorization/
+│   │   │   ├── Token/
+│   │   │   └── Discovery/
+│   │   ├── Domain/                      # Entities, Exceptions (no dependencies)
+│   │   ├── Infrastructure/              # PKCE, JWT, RSA, In-memory stores
+│   │   ├── Common/                      # Behaviors, Middleware, Extensions
+│   │   ├── Controllers/                 # Thin HTTP adapters
+│   │   └── Program.cs
+│   └── IdentityData.Api/                # Phase 2 — Protected Identity Data Resource Server
+│       ├── Features/                    # CQRS — Queries
+│       │   ├── Profile/
+│       │   └── Identity/
+│       ├── Domain/                      # Entities (User, IdentityAttribute, Consent, AuditLog)
+│       ├── Infrastructure/              # EF Core, JWK store, CurrentUser, AuditLogger
+│       ├── Controllers/                 # ProfileController, IdentityController
 │       └── Program.cs
 ├── tests/
 │   ├── IdentityProvider.UnitTests/      # PKCE, JWT, domain, handler unit tests
-│   └── IdentityProvider.IntegrationTests/ # End-to-end OAuth flow tests
+│   ├── IdentityProvider.IntegrationTests/ # End-to-end OAuth flow tests
+│   ├── IdentityData.UnitTests/          # Phase 2 handler and service unit tests
+│   └── IdentityData.IntegrationTests/   # Phase 2 end-to-end protected endpoint tests
 └── docs/
-    └── architecture.md
+    ├── architecture.md                  # Phase 1 architecture detail
+    └── phase-2.md                       # Phase 2 architecture and setup guide
 ```
 
 ---
@@ -293,12 +309,32 @@ All data is fictional test data.
 
 ---
 
+## API Endpoints
+
+### Identity Provider (Phase 1) — `https://localhost:7001`
+
+| Method | Path | Description |
+|---|---|---|
+| `GET` | `/oauth/authorize` | Authorization Code + PKCE initiation |
+| `POST` | `/oauth/token` | Authorization Code exchange → JWT |
+| `GET` | `/.well-known/jwks.json` | Public key set (JWK) |
+| `GET` | `/.well-known/openid-configuration` | OpenID discovery document |
+
+### Identity Data API (Phase 2) — `https://localhost:7100`
+
+| Method | Path | Required Scope | Description |
+|---|---|---|---|
+| `GET` | `/api/profile` | `identity.read` | Authenticated user's profile |
+| `GET` | `/api/identity` | `identity.read` | Extended identity attributes |
+
+---
+
 ## Phase Roadmap
 
 | Phase | Status | Description |
 |---|---|---|
-| **1** | ✅ Complete | Identity Provider foundation (this phase) |
-| **2** | 🔜 Planned | Protected Identity Data API |
+| **1** | ✅ Complete | Identity Provider — OAuth 2.1 + PKCE + RS256 JWT |
+| **2** | ✅ Complete | Protected Identity Data API — JWT validation, EF Core, PostgreSQL |
 | **3** | 🔜 Planned | DPoP (Demonstration of Proof-of-Possession) |
 | **4** | 🔜 Planned | Next.js / React client |
 | **5** | 🔜 Planned | AWS deployment + Supabase + production infrastructure |
