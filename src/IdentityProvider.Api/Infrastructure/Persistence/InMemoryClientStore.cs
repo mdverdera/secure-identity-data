@@ -21,7 +21,7 @@ public sealed class InMemoryClientStore : IClientStore
                 ClientId = "secure-demo-client",
                 ClientName = "Secure Identity Demo Client",
                 RedirectUris = ["https://localhost:3000/callback"],
-                AllowedScopes = ["openid", "profile"],
+                AllowedScopes = ["openid", "profile", "identity.read"],
             },
         };
 

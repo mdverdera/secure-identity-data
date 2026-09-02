@@ -1,0 +1,9 @@
+# Local development overrides
+# HTTPS not required when running in docker-compose
+services:
+  identityprovider:
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+  identitydata:
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development

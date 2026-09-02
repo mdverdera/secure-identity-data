@@ -4,11 +4,14 @@ using IdentityProvider.Api.Domain.Exceptions;
 using IdentityProvider.Api.Features.Token.Commands.ExchangeAuthorizationCode;
 using IdentityProvider.Api.Infrastructure.Authentication;
 using IdentityProvider.Api.Infrastructure.Cryptography;
+using IdentityProvider.Api.Infrastructure.DPoP;
 using IdentityProvider.Api.Infrastructure.Jwt;
 using IdentityProvider.Api.Infrastructure.Persistence;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
+using System.IdentityModel.Tokens.Jwt;
+using System.Text.Json;
 
 namespace IdentityProvider.UnitTests.Features;
 
@@ -19,6 +22,8 @@ public sealed class ExchangeAuthorizationCodeCommandHandlerTests : IDisposable
     private readonly RsaSigningKeyProvider _keyProvider = new();
     private readonly JwtService _jwtService;
     private readonly IConfiguration _config;
+    private readonly Mock<IDpopProofValidator> _dpopValidator = new();
+    private readonly Mock<IJwkThumbprintService> _thumbprintService = new();
 
     private readonly ExchangeAuthorizationCodeCommandHandler _sut;
 
@@ -38,7 +43,9 @@ public sealed class ExchangeAuthorizationCodeCommandHandlerTests : IDisposable
             _pkceService,
             _jwtService,
             _config,
-            NullLogger<ExchangeAuthorizationCodeCommandHandler>.Instance);
+            NullLogger<ExchangeAuthorizationCodeCommandHandler>.Instance,
+            _dpopValidator.Object,
+            _thumbprintService.Object);
     }
 
     private const string Verifier = "dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk";
@@ -226,6 +233,80 @@ public sealed class ExchangeAuthorizationCodeCommandHandlerTests : IDisposable
 
         await act.Should().ThrowAsync<OAuthException>()
             .Where(e => e.Error == "invalid_grant");
+    }
+
+    // ── DPoP path ─────────────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task Handle_WithValidDpopProof_TokenTypeIsDPoP_AndCnfJktSet()
+    {
+        var authCode = BuildValidCode();
+        _codeStore.Setup(s => s.FindAsync("valid-auth-code", default)).ReturnsAsync(authCode);
+
+        // Arrange: DPoP validator returns a valid public key; thumbprint service returns a jkt.
+        var publicKey = new DpopPublicKey("EC", "P-256", "fakeX", "fakeY");
+        const string expectedJkt = "NzbLsXh8uDCcd-6MNwXF4W_7noWXFZAfHkxZsRGC9Xs";
+
+        _dpopValidator
+            .Setup(v => v.ValidateProof(It.IsAny<string>(), "POST", It.IsAny<string>()))
+            .Returns(publicKey);
+
+        _thumbprintService
+            .Setup(t => t.ComputeThumbprint(publicKey.Crv, publicKey.X, publicKey.Y))
+            .Returns(expectedJkt);
+
+        var command = BuildCommand() with { DpopProof = "some.dpop.proof" };
+        var result = await _sut.Handle(command, default);
+
+        result.TokenType.Should().Be("DPoP");
+
+        // Verify the issued JWT contains cnf.jkt.
+        var jwtHandler = new JwtSecurityTokenHandler();
+        var parsed     = jwtHandler.ReadJwtToken(result.AccessToken);
+        var cnfClaim   = parsed.Claims.FirstOrDefault(c => c.Type == "cnf");
+        cnfClaim.Should().NotBeNull("a DPoP-bound token must have a cnf claim");
+
+        var cnfDoc = JsonDocument.Parse(cnfClaim!.Value);
+        cnfDoc.RootElement.GetProperty("jkt").GetString().Should().Be(expectedJkt);
+    }
+
+    [Fact]
+    public async Task Handle_WithoutDpopProof_TokenTypeIsBearer_AndNoCnf()
+    {
+        var authCode = BuildValidCode();
+        _codeStore.Setup(s => s.FindAsync("valid-auth-code", default)).ReturnsAsync(authCode);
+
+        // No DpopProof in command — DPoP validator must NOT be called.
+        var result = await _sut.Handle(BuildCommand(), default);
+
+        result.TokenType.Should().Be("Bearer");
+
+        var jwtHandler = new JwtSecurityTokenHandler();
+        var parsed     = jwtHandler.ReadJwtToken(result.AccessToken);
+        parsed.Claims.Should().NotContain(c => c.Type == "cnf",
+            "a Bearer token must not contain a cnf claim");
+
+        _dpopValidator.Verify(
+            v => v.ValidateProof(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>()),
+            Times.Never,
+            "DPoP validator must not be invoked when no proof is present");
+    }
+
+    [Fact]
+    public async Task Handle_WithInvalidDpopProof_ThrowsOAuthException_InvalidRequest()
+    {
+        var authCode = BuildValidCode();
+        _codeStore.Setup(s => s.FindAsync("valid-auth-code", default)).ReturnsAsync(authCode);
+
+        _dpopValidator
+            .Setup(v => v.ValidateProof(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>()))
+            .Throws(DpopValidationException.InvalidSignature());
+
+        var command = BuildCommand() with { DpopProof = "invalid.dpop.proof" };
+        var act = async () => await _sut.Handle(command, default);
+
+        await act.Should().ThrowAsync<OAuthException>()
+            .Where(e => e.Error == "invalid_request");
     }
 
     public void Dispose() => _keyProvider.Dispose();

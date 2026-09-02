@@ -41,12 +41,16 @@ public sealed class TokenController : ControllerBase
         [FromForm(Name = "code_verifier")] string codeVerifier = "",
         CancellationToken cancellationToken = default)
     {
+        // Extract optional DPoP header — intentionally NOT logged
+        var dpopProof = Request.Headers["DPoP"].FirstOrDefault();
+
         var command = new ExchangeAuthorizationCodeCommand(
             GrantType: grantType,
             Code: code,
             RedirectUri: redirectUri,
             ClientId: clientId,
-            CodeVerifier: codeVerifier);
+            CodeVerifier: codeVerifier,
+            DpopProof: dpopProof);
 
         var result = await _mediator.Send(command, cancellationToken);
 

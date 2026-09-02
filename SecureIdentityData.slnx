@@ -1,9 +1,12 @@
 <Solution>
   <Folder Name="/src/">
     <Project Path="src/IdentityProvider.Api/IdentityProvider.Api.csproj" />
+    <Project Path="src/IdentityData.Api/IdentityData.Api.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/IdentityProvider.IntegrationTests/IdentityProvider.IntegrationTests.csproj" />
     <Project Path="tests/IdentityProvider.UnitTests/IdentityProvider.UnitTests.csproj" />
+    <Project Path="tests/IdentityData.UnitTests/IdentityData.UnitTests.csproj" />
+    <Project Path="tests/IdentityData.IntegrationTests/IdentityData.IntegrationTests.csproj" />
   </Folder>
 </Solution>

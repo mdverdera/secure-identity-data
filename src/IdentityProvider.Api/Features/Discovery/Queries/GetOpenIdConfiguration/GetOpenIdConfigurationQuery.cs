@@ -21,5 +21,7 @@ public sealed record OpenIdConfigurationResult(
     IReadOnlyList<string> IdTokenSigningAlgValuesSupported,
     IReadOnlyList<string> ScopesSupported,
     IReadOnlyList<string> TokenEndpointAuthMethodsSupported,
-    IReadOnlyList<string> CodeChallengeMethodsSupported
+    IReadOnlyList<string> CodeChallengeMethodsSupported,
+    [property: System.Text.Json.Serialization.JsonPropertyName("dpop_signing_alg_values_supported")]
+    IReadOnlyList<string> DpopSigningAlgValuesSupported
 );

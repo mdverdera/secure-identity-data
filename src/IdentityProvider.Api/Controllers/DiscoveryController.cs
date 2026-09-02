@@ -64,6 +64,7 @@ public sealed class DiscoveryController : ControllerBase
         [JsonPropertyName("scopes_supported")] public IReadOnlyList<string> ScopesSupported { get; init; }
         [JsonPropertyName("token_endpoint_auth_methods_supported")] public IReadOnlyList<string> TokenEndpointAuthMethodsSupported { get; init; }
         [JsonPropertyName("code_challenge_methods_supported")] public IReadOnlyList<string> CodeChallengeMethodsSupported { get; init; }
+        [JsonPropertyName("dpop_signing_alg_values_supported")] public IReadOnlyList<string> DpopSigningAlgValuesSupported { get; init; }
 
         public OpenIdConfigurationResponse(OpenIdConfigurationResult r)
         {
@@ -77,6 +78,7 @@ public sealed class DiscoveryController : ControllerBase
             ScopesSupported = r.ScopesSupported;
             TokenEndpointAuthMethodsSupported = r.TokenEndpointAuthMethodsSupported;
             CodeChallengeMethodsSupported = r.CodeChallengeMethodsSupported;
+            DpopSigningAlgValuesSupported = r.DpopSigningAlgValuesSupported;
         }
     }
 

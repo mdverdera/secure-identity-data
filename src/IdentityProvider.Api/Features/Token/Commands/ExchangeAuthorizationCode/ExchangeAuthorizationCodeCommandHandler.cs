@@ -1,5 +1,6 @@
 using IdentityProvider.Api.Domain.Exceptions;
 using IdentityProvider.Api.Infrastructure.Cryptography;
+using IdentityProvider.Api.Infrastructure.DPoP;
 using IdentityProvider.Api.Infrastructure.Jwt;
 using IdentityProvider.Api.Infrastructure.Persistence;
 using MediatR;
@@ -25,19 +26,25 @@ public sealed class ExchangeAuthorizationCodeCommandHandler
     private readonly IJwtService _jwtService;
     private readonly IConfiguration _configuration;
     private readonly ILogger<ExchangeAuthorizationCodeCommandHandler> _logger;
+    private readonly IDpopProofValidator _dpopValidator;
+    private readonly IJwkThumbprintService _thumbprintService;
 
     public ExchangeAuthorizationCodeCommandHandler(
         IAuthorizationCodeStore codeStore,
         IPkceService pkceService,
         IJwtService jwtService,
         IConfiguration configuration,
-        ILogger<ExchangeAuthorizationCodeCommandHandler> logger)
+        ILogger<ExchangeAuthorizationCodeCommandHandler> logger,
+        IDpopProofValidator dpopValidator,
+        IJwkThumbprintService thumbprintService)
     {
         _codeStore = codeStore;
         _pkceService = pkceService;
         _jwtService = jwtService;
         _configuration = configuration;
         _logger = logger;
+        _dpopValidator = dpopValidator;
+        _thumbprintService = thumbprintService;
     }
 
     public async Task<ExchangeAuthorizationCodeResult> Handle(
@@ -97,7 +104,31 @@ public sealed class ExchangeAuthorizationCodeCommandHandler
         // 7. Mark code as used (single-use enforcement)
         authCode.MarkUsed();
 
-        // 8. Issue JWT
+        // 8. If DPoP proof provided, validate it and extract public key thumbprint
+        string? cnfJkt = null;
+        if (request.DpopProof is not null)
+        {
+            var issuerForDpop = _configuration["IdentityProvider:Issuer"] ?? "https://localhost:7001";
+            var tokenEndpointUri = $"{issuerForDpop}/oauth/token";
+
+            try
+            {
+                var publicKey = _dpopValidator.ValidateProof(
+                    request.DpopProof,
+                    expectedHtm: "POST",
+                    expectedHtu: tokenEndpointUri);
+
+                cnfJkt = _thumbprintService.ComputeThumbprint(publicKey.Crv, publicKey.X, publicKey.Y);
+            }
+            catch (DpopValidationException ex)
+            {
+                _logger.LogWarning("DPoP proof validation failed for client {ClientId}: {ErrorCode}",
+                    request.ClientId, ex.ErrorCode);
+                throw OAuthException.InvalidRequest($"DPoP proof validation failed: {ex.ErrorCode}");
+            }
+        }
+
+        // 9. Issue JWT
         var issuer = _configuration["IdentityProvider:Issuer"] ?? "https://localhost:7001";
         var audience = _configuration["IdentityProvider:Audience"] ?? "secure-identity-data-api";
 
@@ -105,7 +136,8 @@ public sealed class ExchangeAuthorizationCodeCommandHandler
             UserId: authCode.UserId,
             Scope: authCode.Scope,
             Issuer: issuer,
-            Audience: audience));
+            Audience: audience,
+            CnfJkt: cnfJkt));
 
         _logger.LogInformation(
             "Access token issued for user {UserId}, client {ClientId}.",

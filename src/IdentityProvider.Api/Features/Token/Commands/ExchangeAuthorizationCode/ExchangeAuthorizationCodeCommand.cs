@@ -11,7 +11,8 @@ public sealed record ExchangeAuthorizationCodeCommand(
     string Code,
     string RedirectUri,
     string ClientId,
-    string CodeVerifier
+    string CodeVerifier,
+    string? DpopProof = null   // Optional DPoP proof JWT from DPoP header
 ) : IRequest<ExchangeAuthorizationCodeResult>;
 
 /// <summary>
