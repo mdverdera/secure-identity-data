@@ -7,7 +7,8 @@ public sealed record TokenRequest(
     string UserId,
     string Scope,
     string Issuer,
-    string Audience
+    string Audience,
+    string? CnfJkt = null   // DPoP JWK thumbprint — when present, issues DPoP-bound token
 );
 
 /// <summary>

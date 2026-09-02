@@ -33,7 +33,8 @@ public sealed class GetOpenIdConfigurationQueryHandler
             IdTokenSigningAlgValuesSupported: ["RS256"],
             ScopesSupported: ["openid", "profile"],
             TokenEndpointAuthMethodsSupported: ["none"],  // public client
-            CodeChallengeMethodsSupported: ["S256"]
+            CodeChallengeMethodsSupported: ["S256"],
+            DpopSigningAlgValuesSupported: ["ES256"]
         );
 
         return Task.FromResult(result);

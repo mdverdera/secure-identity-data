@@ -45,6 +45,9 @@ public sealed class JwtService : IJwtService
             new("scope", request.Scope),
         };
 
+        if (request.CnfJkt is not null)
+            claims.Add(new Claim("cnf", $"{{\"jkt\":\"{request.CnfJkt}\"}}", Microsoft.IdentityModel.JsonWebTokens.JsonClaimValueTypes.Json));
+
         var token = new JwtSecurityToken(
             issuer: request.Issuer,
             audience: request.Audience,
@@ -60,6 +63,7 @@ public sealed class JwtService : IJwtService
         var tokenString = handler.WriteToken(token);
 
         // NOTE: Do not log tokenString — access tokens are sensitive credentials.
-        return new TokenResult(tokenString, _accessTokenLifetimeSeconds);
+        var tokenType = request.CnfJkt is not null ? "DPoP" : "Bearer";
+        return new TokenResult(tokenString, _accessTokenLifetimeSeconds, tokenType);
     }
 }

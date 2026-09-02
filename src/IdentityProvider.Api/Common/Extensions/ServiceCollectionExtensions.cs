@@ -2,10 +2,12 @@ using FluentValidation;
 using IdentityProvider.Api.Common.Behaviors;
 using IdentityProvider.Api.Infrastructure.Authentication;
 using IdentityProvider.Api.Infrastructure.Cryptography;
+using IdentityProvider.Api.Infrastructure.DPoP;
 using IdentityProvider.Api.Infrastructure.Jwt;
 using IdentityProvider.Api.Infrastructure.Persistence;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 
 namespace IdentityProvider.Api.Common.Extensions;
 
@@ -47,6 +49,12 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<IClientStore, InMemoryClientStore>();
         services.AddSingleton<IUserStore, InMemoryUserStore>();
         services.AddSingleton<IAuthorizationCodeStore, InMemoryAuthorizationCodeStore>();
+
+        // DPoP infrastructure
+        services.Configure<DpopOptions>(configuration.GetSection(DpopOptions.SectionName));
+        services.AddSingleton<IJwkThumbprintService, JwkThumbprintService>();
+        services.AddSingleton<IDpopProofValidator>(sp =>
+            new DpopProofValidator(sp.GetRequiredService<IOptions<DpopOptions>>().Value));
 
         return services;
     }

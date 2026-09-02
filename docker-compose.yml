@@ -1,0 +1,61 @@
+version: "3.9"
+services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: identity_data
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  identityprovider:
+    build:
+      context: .
+      dockerfile: src/IdentityProvider.Api/Dockerfile
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - IdentityProvider__Issuer=http://identityprovider:8080
+      - IdentityProvider__Audience=secure-identity-data-api
+      - IdentityProvider__AccessTokenLifetimeSeconds=900
+      - Dpop__Enabled=true
+      - Dpop__MaximumAgeSeconds=300
+      - Dpop__ClockSkewSeconds=60
+    ports:
+      - "7001:8080"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8080/.well-known/openid-configuration || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  identitydata:
+    build:
+      context: .
+      dockerfile: src/IdentityData.Api/Dockerfile
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - IdentityData__JwksUri=http://identityprovider:8080/.well-known/jwks.json
+      - IdentityData__ValidIssuer=http://identityprovider:8080
+      - IdentityData__ValidAudience=secure-identity-data-api
+      - ConnectionStrings__DefaultConnection=Host=postgres;Database=identity_data;Username=${POSTGRES_USER:-postgres};Password=${POSTGRES_PASSWORD:-postgres}
+      - Dpop__Enabled=true
+      - Dpop__MaximumAgeSeconds=300
+      - Dpop__ClockSkewSeconds=60
+    ports:
+      - "7100:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      identityprovider:
+        condition: service_healthy
+
+volumes:
+  postgres_data:
