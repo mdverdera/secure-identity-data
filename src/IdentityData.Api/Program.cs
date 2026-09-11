@@ -24,6 +24,20 @@ builder.Host.UseSerilog((context, loggerConfig) =>
 builder.Services.AddControllers();
 builder.Services.AddIdentityDataServices(builder.Configuration);
 
+// ── CORS ─────────────────────────────────────────────────────────────────────
+// Allow the Next.js development client on port 3000.
+// AllowAnyOrigin() is intentionally NOT used — explicit origin only.
+// The browser sends Authorization + DPoP headers, so AllowCredentials is required.
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("NextJsClient", policy =>
+        policy
+            .WithOrigins("http://localhost:3000")
+            .WithMethods("GET", "OPTIONS")
+            .WithHeaders("Content-Type", "Authorization", "DPoP")
+            .AllowCredentials());
+});
+
 // ── Swagger UI ────────────────────────────────────────────────────────────────
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(options =>
@@ -103,6 +117,7 @@ else
     app.UseHsts();
 }
 
+app.UseCors("NextJsClient");
 app.UseHttpsRedirection();
 app.UseAuthentication();
 app.UseAuthorization();

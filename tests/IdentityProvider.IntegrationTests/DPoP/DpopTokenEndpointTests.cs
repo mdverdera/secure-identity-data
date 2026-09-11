@@ -173,7 +173,7 @@ public sealed class DpopTokenEndpointTests : IClassFixture<IdentityProviderFacto
         var challenge = PkceHelper.GenerateCodeChallenge(verifier);
         var url = $"/oauth/authorize" +
                   $"?client_id=secure-demo-client" +
-                  $"&redirect_uri={Uri.EscapeDataString("https://localhost:3000/callback")}" +
+                  $"&redirect_uri={Uri.EscapeDataString("http://localhost:3000/callback")}" +
                   $"&response_type=code" +
                   $"&scope={Uri.EscapeDataString("openid profile")}" +
                   $"&state=dpop-test-state" +
@@ -193,7 +193,7 @@ public sealed class DpopTokenEndpointTests : IClassFixture<IdentityProviderFacto
             {
                 ["grant_type"]    = "authorization_code",
                 ["code"]          = code,
-                ["redirect_uri"]  = "https://localhost:3000/callback",
+                ["redirect_uri"]  = "http://localhost:3000/callback",
                 ["client_id"]     = "secure-demo-client",
                 ["code_verifier"] = verifier,
             }));
@@ -208,7 +208,7 @@ public sealed class DpopTokenEndpointTests : IClassFixture<IdentityProviderFacto
             {
                 ["grant_type"]    = "authorization_code",
                 ["code"]          = code,
-                ["redirect_uri"]  = "https://localhost:3000/callback",
+                ["redirect_uri"]  = "http://localhost:3000/callback",
                 ["client_id"]     = "secure-demo-client",
                 ["code_verifier"] = verifier,
             }),
