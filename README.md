@@ -32,6 +32,7 @@ This portfolio POC demonstrates enterprise-grade identity and API security patte
 | **cnf.jkt key binding** | **Access token bound to client public key** |
 | **JTI replay protection** | **Single-use DPoP proofs tracked in replay store** |
 | **DPoP proof validation chain** | **typ · alg · sig · htm · htu · iat · ath · jti · cnf.jkt** |
+| **Next.js browser client** | **OAuth + PKCE + DPoP via Web Crypto API** |
 | Protected Resource API | `IdentityData.Api` — PostgreSQL-backed identity data |
 | CQRS with MediatR | Commands + Queries + pipeline behaviors |
 | Clean Architecture | Domain → Application → Infrastructure → API |
@@ -212,14 +213,28 @@ secure-identity-data-poc/
 │   │   │   └── DPoP/               # DpopProofValidator, DpopOptions, models
 │   │   ├── Common/                 # Behaviors, Middleware, Extensions
 │   │   └── Controllers/
-│   └── IdentityData.Api/           # Protected Resource Server
-│       ├── Application/Features/   # GetProfile, GetIdentityAttributes
-│       ├── Domain/                 # Entities
-│       ├── Infrastructure/
-│       │   ├── Authentication/     # DpopAuthenticationHandler (RFC 9449)
-│       │   ├── DPoP/               # IDpopReplayStore, InMemoryDpopReplayStore
-│       │   └── Persistence/        # EF Core, PostgreSQL
-│       └── Controllers/
+│   ├── IdentityData.Api/           # Protected Resource Server
+│   │   ├── Application/Features/   # GetProfile, GetIdentityAttributes
+│   │   ├── Domain/                 # Entities
+│   │   ├── Infrastructure/
+│   │   │   ├── Authentication/     # DpopAuthenticationHandler (RFC 9449)
+│   │   │   ├── DPoP/               # IDpopReplayStore, InMemoryDpopReplayStore
+│   │   │   └── Persistence/        # EF Core, PostgreSQL
+│   │   └── Controllers/
+│   └── IdentityClient.Web/         # Next.js Browser Client (Phase 4)
+│       ├── app/                    # App Router pages
+│       │   ├── page.tsx            # Home — POC overview
+│       │   ├── login/              # Initiates OAuth flow
+│       │   ├── callback/           # Handles OAuth redirect
+│       │   ├── profile/            # GET /api/profile with DPoP
+│       │   ├── identity/           # GET /api/identity with DPoP
+│       │   └── security/           # Security mechanism display
+│       ├── lib/
+│       │   ├── auth/               # PKCE, OAuth flow, state, config
+│       │   ├── dpop/               # Key generation, JWK thumbprint, proof
+│       │   └── api/                # DPoP-authenticated API client
+│       ├── context/                # AuthContext state machine
+│       └── tests/                  # Vitest unit tests (62 tests)
 ├── tests/
 │   ├── IdentityProvider.UnitTests/      # PKCE, JWT, DPoP issuance, domain
 │   ├── IdentityProvider.IntegrationTests/ # Full OAuth + DPoP token endpoint
@@ -230,7 +245,8 @@ secure-identity-data-poc/
 ├── .env.example
 └── docs/
     ├── architecture.md             # Phase 1 architecture detail
-    └── phase-3.md                  # DPoP deep-dive (RFC 9449)
+    ├── phase-3.md                  # DPoP deep-dive (RFC 9449)
+    └── phase-4.md                  # Next.js browser client (Phase 4)
 ```
 
 ---
@@ -271,19 +287,29 @@ dotnet run --project src/IdentityProvider.Api
 # Terminal 2 — Identity Data API (requires PostgreSQL)
 dotnet run --project src/IdentityData.Api
 # → https://localhost:7100
+
+# Terminal 3 — Next.js Browser Client (Phase 4)
+cd src/IdentityClient.Web
+cp .env.local.example .env.local
+npm install
+npm run dev
+# → http://localhost:3000
 ```
 
 ### Run Tests
 
 ```bash
-# All tests
+# All .NET tests
 dotnet test SecureIdentityData.slnx
 
-# Individual suites
+# Individual .NET suites
 dotnet test tests/IdentityProvider.UnitTests
 dotnet test tests/IdentityData.UnitTests
 dotnet test tests/IdentityProvider.IntegrationTests
 dotnet test tests/IdentityData.IntegrationTests
+
+# Frontend tests
+cd src/IdentityClient.Web && npm test
 ```
 
 ---
@@ -392,7 +418,7 @@ All data is fictional test data.
 | **1** | ✅ Complete | Identity Provider — OAuth 2.1, PKCE, RS256 JWT |
 | **2** | ✅ Complete | Protected Identity Data API — CQRS, PostgreSQL, JWT validation |
 | **3** | ✅ Complete | DPoP sender-constrained tokens — RFC 9449, EC P-256, cnf.jkt, replay protection |
-| **4** | 🔜 Planned | Next.js / React client |
+| **4** | ✅ Complete | Next.js browser client — OAuth + PKCE + DPoP via Web Crypto API |
 | **5** | 🔜 Planned | AWS deployment + Supabase + production infrastructure |
 
 ---

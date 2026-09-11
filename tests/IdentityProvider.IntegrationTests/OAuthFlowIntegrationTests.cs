@@ -92,7 +92,7 @@ public sealed class OAuthFlowIntegrationTests : IClassFixture<IdentityProviderFa
 
         var location = response.Headers.Location;
         location.Should().NotBeNull();
-        location!.ToString().Should().StartWith("https://localhost:3000/callback");
+        location!.ToString().Should().StartWith("http://localhost:3000/callback");
 
         var query = HttpUtility.ParseQueryString(location.Query);
         query["code"].Should().NotBeNullOrEmpty();
@@ -331,7 +331,7 @@ public sealed class OAuthFlowIntegrationTests : IClassFixture<IdentityProviderFa
             {
                 ["grant_type"] = "authorization_code",
                 ["code"] = code,
-                ["redirect_uri"] = "https://localhost:3000/callback",
+                ["redirect_uri"] = "http://localhost:3000/callback",
                 ["client_id"] = "secure-demo-client",
                 // code_verifier intentionally omitted
             }));
@@ -347,7 +347,7 @@ public sealed class OAuthFlowIntegrationTests : IClassFixture<IdentityProviderFa
     private string BuildAuthorizeUrl(
         string codeChallenge = "",
         string clientId = "secure-demo-client",
-        string redirectUri = "https://localhost:3000/callback",
+        string redirectUri = "http://localhost:3000/callback",
         string responseType = "code",
         string scope = "openid profile",
         string state = "integration-test-state",
@@ -386,7 +386,7 @@ public sealed class OAuthFlowIntegrationTests : IClassFixture<IdentityProviderFa
         string code,
         string codeVerifier,
         string clientId = "secure-demo-client",
-        string redirectUri = "https://localhost:3000/callback")
+        string redirectUri = "http://localhost:3000/callback")
     {
         return _client.PostAsync("/oauth/token",
             new FormUrlEncodedContent(new Dictionary<string, string>

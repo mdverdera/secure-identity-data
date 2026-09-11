@@ -20,7 +20,9 @@ public sealed class InMemoryClientStore : IClientStore
             {
                 ClientId = "secure-demo-client",
                 ClientName = "Secure Identity Demo Client",
-                RedirectUris = ["https://localhost:3000/callback"],
+                // http (not https) — Next.js dev server runs plain HTTP on port 3000.
+                // A self-signed cert is unnecessary complexity for local development.
+                RedirectUris = ["http://localhost:3000/callback"],
                 AllowedScopes = ["openid", "profile", "identity.read"],
             },
         };
